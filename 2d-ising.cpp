@@ -1,3 +1,8 @@
+// Adapted from Jacques Kotze's code
+// Ref: https://arxiv.org/abs/0803.0217v1/
+// 2D ising model on hexagonal lattice
+
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,24 +18,30 @@ struct lat_type
     int iat;  // atom index in unit-cell
 };
 
-const int size = 25;                  // lattice size
-const int nat=2;                      // number of atoms per unit cell
-const int nsp=nat*size*size;          // number of spin points on lattice
-long unsigned int const nmcs=40000;         // number of Monte Carlo steps
-int const ntrans=80000;                     // number of transient steps
-double const norm=(1.0/double(nsp));  // normalization for averaging
-double const norm2=norm*norm;
-double const norm4=norm2*norm2;
 
-double T = 8.0;                       // starting point for temperature
-const double minT = 5.5;              // minimum temperature
-double change = 0.5;                  // size of steps for temperature loop
-int lat[size+1][size+1][nat+1];       // 2d lattice for spins
-long int seed=436675;                 // seed for random number 
 // Ising model:
 //   H = -J \sum_{ij} S_i * S_j
-double J=5.0;   // 10.0;                      // exchange coupling, in meV
-double kb=1.0;  // 8.6173303e-2;              // meV/K
+//
+// *** Input parameters ********************* //
+double const J=5.0;   // 10.0;                // exchange coupling, in meV
+double const kb=1.0;  // 8.6173303e-2;        // meV/K
+double T = 8.0;                               // starting point for temperature
+double const minT = 5.5;                      // minimum temperature
+double const change = 0.5;                    // size of steps for temperature loop
+long unsigned int const nmcs=40000;           // number of Monte Carlo steps
+int const ntrans=80000;                       // number of transient steps
+// ****************************************** //
+
+const int size = 25;                          // lattice size
+const int nat=2;                              // number of atoms per unit cell
+const int nsp=nat*size*size;                  // number of spin points on lattice
+double const norm=(1.0/double(nsp));          // normalization for averaging
+double const norm2=norm*norm;                 
+double const norm4=norm2*norm2;               
+                                              
+int lat[size+1][size+1][nat+1];               // 2d lattice for spins
+long int seed=436675;                         // seed for random number 
+
 
 void initialize(int lat[size+1][size+1][nat+1])
 {
