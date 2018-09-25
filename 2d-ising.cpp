@@ -1,14 +1,13 @@
 // Adapted from Jacques Kotze's code
 // Ref: https://arxiv.org/abs/0803.0217v1/
 // 2D ising model on hexagonal lattice
-
+// Compile: g++ 2d-ising.cpp ran1.c -o ising2d.exe
 
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 #include "ran1.h"
 
 struct lat_type
@@ -18,29 +17,30 @@ struct lat_type
     int iat;  // atom index in unit-cell
 };
 
-
 // Ising model:
 //   H = -J \sum_{ij} S_i * S_j
 //
-// *** Input parameters ********************* //
-double const J=5.0;   // 10.0;                // exchange coupling, in meV
-double const kb=1.0;  // 8.6173303e-2;        // meV/K
-double T = 8.0;                               // starting point for temperature
-double const minT = 5.5;                      // minimum temperature
-double const change = 0.5;                    // size of steps for temperature loop
-long unsigned int const nmcs=40000;           // number of Monte Carlo steps
-int const ntrans=80000;                       // number of transient steps
-// ****************************************** //
-
-const int size = 25;                          // lattice size
-const int nat=2;                              // number of atoms per unit cell
-const int nsp=nat*size*size;                  // number of spin points on lattice
-double const norm=(1.0/double(nsp));          // normalization for averaging
-double const norm2=norm*norm;                 
-double const norm4=norm2*norm2;               
-                                              
-int lat[size+1][size+1][nat+1];               // 2d lattice for spins
-long int seed=436675;                         // seed for random number 
+// *** Input parameters ************************************* //
+double const J1=3.0;                                          // nearest neighbor exchange coupling, in meV
+double const J2=0.0;                                          // next nearest neighbor 
+double const J3=0.0;                                          // next next nearest neighbor
+double const kb=8.6173303e-2;                                 // kb = 8.6173303e-2 meV/K
+double T = 12.0;                                              // starting point for temperature
+double const minT = 12.0;                                     // minimum temperature
+double const change = 0.25;                                   // size of steps for temperature loop
+long unsigned int const nmcs=400000;                           // number of Monte Carlo steps
+int const ntrans=80000;                                       // number of transient steps
+// ********************************************************** //
+                                                             
+const int size = 25;                                          // lattice size
+const int nat=2;                                              // number of atoms per unit cell
+const int nsp=nat*size*size;                                  // number of spin points on lattice
+double const norm=(1.0/double(nsp));                          // normalization for averaging
+double const norm2=norm*norm;                                 
+double const norm4=norm2*norm2;                               
+                                                              
+int lat[size+1][size+1][nat+1];                               // 2d lattice for spins
+long int seed=436675;                                         // seed for random number 
 
 
 void initialize(int lat[size+1][size+1][nat+1])
@@ -78,7 +78,7 @@ double energy_pos(lat_type &pos)
 {
     //periodic boundary conditions
     int up, down, left, right;
-    double energy;
+    double energy = 0.0;
     if(pos.y==size)  up=1;
     else  up=pos.y+1;
     
@@ -91,19 +91,53 @@ double energy_pos(lat_type &pos)
     if(pos.x==size)  right=1;
     else  right=pos.x+1;
     
-    // energy for specfic position
+    // energy for a specfic position
+    // contirbution from nearest neighbor
     if (pos.iat==1)
     {
       int neib=2;
-      energy = -J*lat[pos.x][pos.y][pos.iat] * ( lat[left][pos.y][neib] + \
-        lat[pos.x][pos.y][neib] + lat[pos.x][down][neib] );
+      energy = -J1*lat[pos.x][pos.y][pos.iat] * ( lat[left][pos.y][neib] + \
+        lat[pos.x][pos.y][neib] + \
+        lat[pos.x][down][neib] );
     }
     else
     {
       int neib=1;
-      energy = -J*lat[pos.x][pos.y][pos.iat] * ( lat[right][pos.y][neib] + \
-        lat[pos.x][pos.y][neib]+lat[pos.x][up][neib] );
+      energy = -J1*lat[pos.x][pos.y][pos.iat] * ( lat[right][pos.y][neib] + \
+        lat[pos.x][pos.y][neib] + \
+        lat[pos.x][up][neib] );
     }
+
+    // contribution from next-nearest neighbor
+    if (abs(J2) > 1e-3) 
+    {
+      energy += -J2*lat[pos.x][pos.y][pos.iat] * ( lat[right][pos.y][pos.iat] + \
+          lat[left][pos.y][pos.iat] + \
+          lat[pos.x][up][pos.iat]   + \
+          lat[pos.y][down][pos.iat] + \
+          lat[left][up][pos.iat]    + \
+          lat[right][down][pos.iat] );
+    }
+
+    // contribution from next-next-nearest neighbor
+    if (abs(J3) > 1e-3)
+    {
+      if (pos.iat==1)
+      {
+          int neib = 2;
+          energy += -J3*lat[pos.x][pos.y][pos.iat] * ( lat[left][up][neib] + \
+            lat[right][down][neib]  + \
+            lat[left][down][neib]);
+      }
+      else
+      {
+          int neib = 1;
+          energy += -J3*lat[pos.x][pos.y][pos.iat] * ( lat[left][up][neib] + \
+            lat[right][down][neib]  + \
+            lat[right][up][neib]);
+      }
+    }
+    
     // std::cout << e << std::endl;
     return energy;
 }
@@ -192,9 +226,18 @@ int main(int argc, char **argv)
    double M=0, M_avg=0, M2_avg=0, mtot=0, m2tot=0;
    double Mabs=0, Mabs_avg=0, M4_avg=0, mabstot=0, m4tot=0;
    double de=0;
-
-   std::ofstream DATA("2D-ising.dat", std::ofstream::out);
+   FILE * pfile;
    lat_type pos;
+
+   pfile = fopen("2D-ising.dat","w");
+   fprintf (pfile, "# %7s ", " T" );                                      // temperature
+   fprintf (pfile, "  %8s  %8s  %8s", "M_avg", "Mabs_avg", "M2_avg" );   // <M>; <|M|>; <M^2> per spin 
+   fprintf (pfile, "  %8s", "dM/dT" );                // susceptibility per spin (X) = dM/dT
+   fprintf (pfile, "  %8s", "d|M|/dT" );          // susceptibility per spin (X') = d|M|/dT
+   fprintf (pfile, "  %8s  %8.4f ", "E_avg", "E^2_avg" );                   // <E>; <E^2> per spin
+   fprintf (pfile, "  %8s",  "dE/dT" );           // heat capacity (C) per spin
+   fprintf (pfile, "  %28s\n","U_L=1-((M4_avg)/(3*M2_avg))" );                // cumulant (U_L)
+
 
    //initiliaze lattice to random configuration
    initialize(lat);
@@ -216,6 +259,7 @@ int main(int argc, char **argv)
      etot=0;
      e2tot=0;
      mtot=0;
+     m2tot=0;
      m4tot=0;
      mabstot=0;
 
@@ -242,7 +286,7 @@ int main(int argc, char **argv)
        m4tot+=M*M*M*M*norm4;
        mabstot+=(sqrt(M*M))*norm;
 
-       // DATA<<"  "<<imc<<"  "<<M<<std::endl; 
+       fprintf (pfile, " %12d %12.4f \n", imc, M*norm);
      }
 
      //average observables
@@ -254,16 +298,15 @@ int main(int argc, char **argv)
      M4_avg=m4tot/nmcs;
 
      //output data to file
-     DATA<<"#"<<T<<                                      //temperature
-     "\t"<<M_avg<<"\t"<<Mabs_avg<<"\t"<<M2_avg<<        //<M>; <|M|>; <M^2> per spin 
-     "\t"<<(M2_avg-(M_avg*M_avg*nsp))/T<<               //susceptibility per spin (X) = dM/dT
-     "\t"<<(M2_avg-(Mabs_avg*Mabs_avg*nsp))/T<<         //susceptibility per spin (X') = d|M|/dT
-     "\t"<<E_avg<<"\t"<<E2_avg<<                        //<E>; <E^2> per spin
-     "\t"<<(E2_avg-(E_avg*E_avg*nsp))/(T*T)<<           //heat capacity (C) per spin
-     "\t"<<1-((M4_avg)/(3*M2_avg))<<std::endl;          //cumulant (U_L)
+     fprintf (pfile, "  %7.4f ", T );                                      // temperature
+     fprintf (pfile, "  %8.4f  %8.4f  %8.4f", M_avg, Mabs_avg, M2_avg );   // <M>; <|M|>; <M^2> per spin 
+     fprintf (pfile, "  %8.4f", (M2_avg-(M_avg*M_avg))/T );                // susceptibility per spin (X) = dM/dT
+     fprintf (pfile, "  %8.4f", (M2_avg-(Mabs_avg*Mabs_avg))/T );          // susceptibility per spin (X') = d|M|/dT
+     fprintf (pfile, "  %8.4f  %8.4f ", E_avg, E2_avg );                   // <E>; <E^2> per spin
+     fprintf (pfile, "  %8.4f",  (E2_avg-(E_avg*E_avg))/(T*T) );           // heat capacity (C) per spin
+     fprintf (pfile, "  %8.4f\n",1-((M4_avg)/(3*M2_avg)) );                // cumulant (U_L)
    }
    
-   DATA.close();
-
+   fclose(pfile);
    return 0;
 }
