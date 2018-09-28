@@ -1,0 +1,9 @@
+3.0                           ! J1 (meV)
+0.0                           ! J2 (meV)
+0.0                           ! J3 (meV)
+45                            ! maximum temperature, also starting temperature
+35                            ! minimum temperature
+2.0                           ! size of steps for temperature
+10000                         ! number of Monte Carlo steps
+8000                          ! number of transient steps
+25                            ! lattice size 

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <iomanip>
+#include <string.h>
 #include "ran1.h"
 
 struct lat_type
@@ -21,17 +22,18 @@ struct lat_type
 //   H = -J \sum_{ij} S_i * S_j
 //
 // *** Input parameters ************************************* //
-double const J1=3.0;                                          // nearest neighbor exchange coupling, in meV
-double const J2=0.0;                                          // next nearest neighbor 
-double const J3=0.0;                                          // next next nearest neighbor
-double const kb=8.6173303e-2;                                 // kb = 8.6173303e-2 meV/K
-double T = 12.0;                                              // starting point for temperature
-double const minT = 12.0;                                     // minimum temperature
-double const change = 0.25;                                   // size of steps for temperature loop
-long unsigned int const nmcs=400000;                           // number of Monte Carlo steps
-int const ntrans=80000;                                       // number of transient steps
+double J1= 3.99;                                         // nearest neighbor exchange coupling, in meV
+double J2=-0.44;                                        // next nearest neighbor 
+double J3= 0.22;                                        // next next nearest neighbor
+double kb=8.6173303e-2;                                 // kb = 8.6173303e-2 meV/K
+double T =15.0;                                               // starting point for temperature
+double minT =15.0;                                      // minimum temperature
+double Tstep = 0.25;                                   // size of steps for temperature loop
+long unsigned int nmcs= 20000;                         // number of Monte Carlo steps
+int ntrans= 1000;                                      // number of transient steps
 // ********************************************************** //
                                                              
+const int nplot = 30000;
 const int size = 25;                                          // lattice size
 const int nat=2;                                              // number of atoms per unit cell
 const int nsp=nat*size*size;                                  // number of spin points on lattice
@@ -41,7 +43,6 @@ double const norm4=norm2*norm2;
                                                               
 int lat[size+1][size+1][nat+1];                               // 2d lattice for spins
 long int seed=436675;                                         // seed for random number 
-
 
 void initialize(int lat[size+1][size+1][nat+1])
 {
@@ -219,6 +220,27 @@ double total_energy()
   return e;
 }
 
+void print_spin(int nstep)
+{
+   FILE *outfile;
+   char filename[40]="spinconfig";
+   char tmpstr[20];
+   sprintf(tmpstr, "%d", nstep);
+   strcat(filename, tmpstr);
+   outfile = fopen(filename,"w");
+   for(int x=1; x<=size; x++)
+   {
+       for(int y=1; y<=size; y++)
+       {
+           for(int iat=1; iat<=nat; iat++)
+           {
+               fprintf( outfile, " %12.5f  %12.5f  %5d \n ", x+y/2.0+(iat-1)/2.0, y*sqrt(3.0)/2.0+(iat-1)*sqrt(3.0)/6.0, lat[x][y][iat] );
+           }
+       }
+   }
+   fclose(outfile);
+}
+
 int main(int argc, char **argv)
 {
    //declaring variables to be used in calculating the observables
@@ -243,7 +265,7 @@ int main(int argc, char **argv)
    initialize(lat);
 
    //Tempearature loop
-   for(;T>=minT;T=T-change)
+   for(;T>=minT;T=T-Tstep)
    {
      std::cout << "Working on temperature: " << T << std::endl;
 
@@ -287,6 +309,11 @@ int main(int argc, char **argv)
        mabstot+=(sqrt(M*M))*norm;
 
        fprintf (pfile, " %12d %12.4f \n", imc, M*norm);
+
+       if(imc%nplot == 0)
+       {
+          print_spin(imc); 
+       }
      }
 
      //average observables
