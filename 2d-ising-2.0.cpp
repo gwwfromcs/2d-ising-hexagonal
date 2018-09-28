@@ -2,7 +2,8 @@
 // Ref: https://arxiv.org/abs/0803.0217v1/
 // 2D ising model on hexagonal lattice
 // Compile: g++ -O3 -std=c++11 2d-ising-class.cpp ran1.c -o ising2d-class.exe
-// The program automatically read input.2d-ising and perform calculations
+// The program automatically reads input.2d-ising and perform calculations.
+// Please see input.2d-ising file for explanation
 
 #include <math.h>
 #include <stdio.h>
@@ -28,18 +29,20 @@ struct lat_type
 class ising_2d_hexagonal
 {
     private:
-      double J1;                                 // nearest neighbor exchange coupling, in meV
-      double J2;                                 // next nearest neighbor 
-      double J3;                                 // next next nearest neighbor
-      double maxT;                               // starting point for temperature, Maximum Temperature
-      double minT;                               // minimum temperature
-      double Tstep;                              // size of steps for temperature loop
-      long unsigned int nmcs;                    // number of Monte Carlo steps
-      int ntrans;                                // number of transient steps
-      int size;                                  // lattice size
-      static int const nat=2;                    // number of atoms per unit cell
-      int nsp;                                   // number of spin points on lattice
-      double norm;                               // normalization for averaging
+      double J1;                           // nearest neighbor exchange coupling, in meV
+      double J2;                           // next nearest neighbor 
+      double J3;                           // next next nearest neighbor
+      double maxT;                         // starting point for temperature, Maximum Temperature
+      double minT;                         // minimum temperature
+      double Tstep;                        // size of steps for temperature loop
+      long unsigned int nmcs;              // number of Monte Carlo steps
+      int ntrans;                          // number of transient steps
+      int size;                            // lattice size
+      int nplot;                           // how many spin-config plots taken from mc simulation for each temperature, written in file spinconf*
+      int mcplot;                          // if not equal to 1, then output <M(nstep)> in file "mc_T*" for each temperature
+      static int const nat=2;              // number of atoms per unit cell
+      int nsp;                             // number of spin points on lattice
+      double norm;                         // normalization for averaging
       double norm2;                                 
       double norm4;                               
       int ***lat;
@@ -51,9 +54,9 @@ class ising_2d_hexagonal
       {
         lat_type pos;
         double de=0;
-        for(int imc=1;imc<ntrans;imc++)      //Monte Carlo steps
+        for(int imc=1;imc<ntrans;imc++)    //Monte Carlo steps
         {
-          for(int isp=1;isp<=nsp;isp++)      //Metropolis steps
+          for(int isp=1;isp<=nsp;isp++)    //Metropolis steps
           {
             choose_random_pos_lat(pos);
             if(test_flip(pos,de,T))
@@ -204,12 +207,14 @@ class ising_2d_hexagonal
         lat[pos.x][pos.y][pos.iat]=-lat[pos.x][pos.y][pos.iat];
       }
 
-      void print_spin(int nstep)
+      void print_spin(int nstep, double temp)
       {
          FILE *plotfile;
-         char filename[40]="spinconfig";
+         char filename[60]="spinconf";
          char tmpstr[20];
-         sprintf(tmpstr, "%d", nstep);
+         sprintf(tmpstr, "_n%d", nstep);
+         strcat(filename, tmpstr);
+         sprintf(tmpstr, "_T%lf", temp);
          strcat(filename, tmpstr);
          plotfile = fopen(filename,"w");
          for(int x=1; x<=size; x++)
@@ -245,8 +250,10 @@ class ising_2d_hexagonal
               fgets(line, sizeof(line), pfin); sscanf(line, "%lf", &minT);
               fgets(line, sizeof(line), pfin); sscanf(line, "%lf", &Tstep);
               fgets(line, sizeof(line), pfin); sscanf(line, "%lu", &nmcs);
-              fgets(line, sizeof(line), pfin); sscanf(line, "%lu", &ntrans);
-              fgets(line, sizeof(line), pfin); sscanf(line, "%lu", &size);
+              fgets(line, sizeof(line), pfin); sscanf(line, "%d", &ntrans);
+              fgets(line, sizeof(line), pfin); sscanf(line, "%d", &size);
+              fgets(line, sizeof(line), pfin); sscanf(line, "%d", &nplot);
+              fgets(line, sizeof(line), pfin); sscanf(line, "%d", &mcplot);
               nsp = size*size*nat;
               norm = 1.0/double(nsp);
               norm2 = norm*norm;
@@ -311,12 +318,15 @@ class ising_2d_hexagonal
           FILE * pfile;
           FILE * mcfile;
           double de=0, T;
+          int plotstep;
           lat_type pos;
+          if (nplot > 0) plotstep = nmcs/nplot;
           pfile = fopen("2D-ising.dat","w");
-          fprintf (pfile, "# J1=%8.4lf\n# J2=%8.4lf\n# J3=%8.4lf\n", J1, J2, J3);
-          fprintf (pfile, "# MaxT=%8.4lf\n# MinT=%8.4lf\n# Tstep=%8.4lf\n", maxT, minT, Tstep);
-          fprintf (pfile, "# nmcs=%12d\n# ntrans=%12d\n", nmcs, ntrans);
+          fprintf (pfile, "# J1 =%8.4lf\n# J2 =%8.4lf\n# J3 =%8.4lf\n", J1, J2, J3);
+          fprintf (pfile, "# MaxT =%8.4lf\n# MinT =%8.4lf\n# Tstep=%8.4lf\n", maxT, minT, Tstep);
+          fprintf (pfile, "# nmcs =%d\n# ntrans =%d\n", nmcs, ntrans);
           fprintf (pfile, "# System size L = %d x %d \n", size, size);
+          fprintf (pfile, "# nplot = %d", nplot);
           fprintf (pfile, "# %7s ", " T" );                                      // temperature
           fprintf (pfile, "  %8s  %8s  %8s", "M_avg", "Mabs_avg", "M2_avg" );    // <M>; <|M|>; <M^2> per spin 
           fprintf (pfile, "  %8s", "dM/dT" );                                    // susceptibility per spin (X) = dM/dT
@@ -332,8 +342,8 @@ class ising_2d_hexagonal
             char tmpstr[20];
             sprintf(tmpstr, "%3lf", T);
             strcat(filename, tmpstr);
-            mcfile = fopen(filename,"w");
-            std::cout << "Working on temperature: " << T << std::endl;
+            if (mcplot==1) mcfile = fopen(filename,"w");
+            std::cout << "Working on temperature: " << T << " K." << std::endl;
           
             //transient function
             transient_results(T);
@@ -374,9 +384,14 @@ class ising_2d_hexagonal
               m4tot+=M*M*M*M*norm4;
               mabstot+=(sqrt(M*M))*norm;
             
-              fprintf (mcfile, " %12d %12.4f \n", imc, M*norm);
+              if(mcplot==1) fprintf (mcfile, " %12d %12.4f \n", imc, M*norm);
+
+              if(imc%plotstep == 0 && nplot != 0)
+              {
+                  print_spin(imc, T);
+              }
             }
-            fclose(mcfile);
+            if(mcplot==1) fclose(mcfile);
             
             //average observables
             E_avg=etot/nmcs;
@@ -406,16 +421,16 @@ int main(int argc, char **argv)
 
    //initiliaze lattice to random configuration
    model.set_parameters();
-   std::cout << 1;
+   std::cout << " Read parameters from `input.2d-ising`. Done\n";
    model.allocate_lat();
-   std::cout << 2;
+   std::cout << " Allocate spin lattice. Done\n";
    model.initialize();
-   std::cout << 3;
+   std::cout << " Initialize spin lattice with random spins. Done\n\n";
 
    model.mc_simulate();
-   std::cout << 4;
-   model.allocate_lat();
-   std::cout << 5;
+   std::cout << " Finished mc simulations\n";
+   model.deallocate_lat();
+   std::cout << " Deallcate spin lattice in memory. Done\n Finished!\n";
    return 0;
 }
 

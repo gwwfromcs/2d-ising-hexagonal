@@ -2,8 +2,10 @@
 0.0                           ! J2 (meV)
 0.0                           ! J3 (meV)
 45                            ! maximum temperature, also starting temperature
-35                            ! minimum temperature
+40                            ! minimum temperature
 2.0                           ! size of steps for temperature
 10000                         ! number of Monte Carlo steps
 8000                          ! number of transient steps
 25                            ! lattice size 
+5                             ! number of snapshots of the spin configuration in mc simulation for each temperature; if equal to 0, then do not plot
+1                             ! if equal to 1, then plot the average magnetization <M(nstep)> in "mc_T*" files for each temperature

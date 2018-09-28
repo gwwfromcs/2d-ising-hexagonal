@@ -1,1 +1,1 @@
-rm spinconfig* 2D-ising.dat* mc-T*
+rm spinconf* 2D-ising.dat* mc_T*
