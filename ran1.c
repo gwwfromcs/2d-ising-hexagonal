@@ -1,3 +1,4 @@
+// Algorithm taken from numerical recipe in C
 
 #define IA 16807
 #define IM 2147483647

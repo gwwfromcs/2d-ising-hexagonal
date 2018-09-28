@@ -1,7 +1,7 @@
 // Adapted from Jacques Kotze's code
 // Ref: https://arxiv.org/abs/0803.0217v1/
 // 2D ising model on hexagonal lattice
-// Compile: g++ -O3 -std=c++11 2d-ising-class.cpp ran1.c -o ising2d-class.exe
+// Compile: g++ -O3 -std=c++11 2d-ising-2.0.cpp ran1.c -o ising2d-2.exe
 // The program automatically reads input.2d-ising and perform calculations.
 // Please see input.2d-ising file for explanation
 
@@ -326,7 +326,7 @@ class ising_2d_hexagonal
           fprintf (pfile, "# MaxT =%8.4lf\n# MinT =%8.4lf\n# Tstep=%8.4lf\n", maxT, minT, Tstep);
           fprintf (pfile, "# nmcs =%d\n# ntrans =%d\n", nmcs, ntrans);
           fprintf (pfile, "# System size L = %d x %d \n", size, size);
-          fprintf (pfile, "# nplot = %d", nplot);
+          fprintf (pfile, "# nplot = %d\n", nplot);
           fprintf (pfile, "# %7s ", " T" );                                      // temperature
           fprintf (pfile, "  %8s  %8s  %8s", "M_avg", "Mabs_avg", "M2_avg" );    // <M>; <|M|>; <M^2> per spin 
           fprintf (pfile, "  %8s", "dM/dT" );                                    // susceptibility per spin (X) = dM/dT
@@ -404,8 +404,8 @@ class ising_2d_hexagonal
             //output data to file
             fprintf (pfile, "  %7.4f ", T );                                      // temperature
             fprintf (pfile, "  %8.4f  %8.4f  %8.4f", M_avg, Mabs_avg, M2_avg );   // <M>; <|M|>; <M^2> per spin 
-            fprintf (pfile, "  %8.4f", (M2_avg-(M_avg*M_avg))/T );                // susceptibility per spin (X) = dM/dT
-            fprintf (pfile, "  %8.4f", (M2_avg-(Mabs_avg*Mabs_avg))/T );          // susceptibility per spin (X') = d|M|/dT
+            fprintf (pfile, "  %8.4e", (M2_avg-(M_avg*M_avg))/T );                // susceptibility per spin (X) = dM/dT
+            fprintf (pfile, "  %8.4e", (M2_avg-(Mabs_avg*Mabs_avg))/T );          // susceptibility per spin (X') = d|M|/dT
             fprintf (pfile, "  %8.4f  %8.4f ", E_avg, E2_avg );                   // <E>; <E^2> per spin
             fprintf (pfile, "  %8.4f",  (E2_avg-(E_avg*E_avg))/(T*T) );           // heat capacity (C) per spin
             fprintf (pfile, "  %8.4f\n",1-((M4_avg)/(3*M2_avg)) );                // cumulant (U_L)
