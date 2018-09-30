@@ -386,9 +386,9 @@ class ising_2d_hexagonal
             
               if(mcplot==1) fprintf (mcfile, " %12d %12.4f \n", imc, M*norm);
 
-              if(imc%plotstep == 0 && nplot != 0)
+              if(nplot > 0)
               {
-                  print_spin(imc, T);
+                 if(imc%plotstep == 0) print_spin(imc, T);
               }
             }
             if(mcplot==1) fclose(mcfile);
